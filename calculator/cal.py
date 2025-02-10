@@ -1,74 +1,81 @@
 #!/usr/bin/env python3
 """
 PyQt5 GUI Calculator with many Casio fx-50FH II functions.
-Buttons include:
-  factorial, ^-1, cuberoot, cube, +, -, *, /, sqrt, square, root,
-  power, log, 10^x, ln, e^x, e, sin, cos, tan, arcsin, arccos, arctan,
-  csc, sec, cot, (, ), i, HEX, BIN, DEC, OCT, 0-9, ., pi, random,
-  DELETE, CLEAR, nPr, nCr, Pol, Rec, ANS, EXE.
-
-Run this program with PyQt5 installed.
 """
 
 import sys
 import math
 import random
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QGridLayout, QLineEdit, QPushButton, QVBoxLayout, QMessageBox)
+from PyQt5.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QGridLayout,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QMessageBox,
+)
+from PyQt5.QtGui import QFont
 
 
-# --- Helper Functions used in eval ---
+# --- Helper Functions ---
 def recip(x):
     return 1 / x
 
+
 def cube(x):
-    return x ** 3
+    return x**3
+
 
 def square(x):
-    return x ** 2
+    return x**2
+
 
 def cuberoot(x):
     return x ** (1 / 3)
 
+
 def ten_pow(x):
-    return 10 ** x
+    return 10**x
+
 
 def e_pow(x):
-    return math.e ** x
+    return math.e**x
+
 
 def nPr(n, r):
-    # Uses math.perm if available (Python>=3.8)
-    if hasattr(math, "perm"):
+    if hasattr(math, "perm"):  # Python >= 3.8
         return math.perm(n, r)
-    else:
-        return math.factorial(n) // math.factorial(n - r)
+    return math.factorial(n) // math.factorial(n - r)
+
 
 def nCr(n, r):
-    # Uses math.comb if available (Python>=3.8)
-    if hasattr(math, "comb"):
+    if hasattr(math, "comb"):  # Python >= 3.8
         return math.comb(n, r)
-    else:
-        return math.factorial(n) // (math.factorial(r) * math.factorial(n - r))
+    return math.factorial(n) // (math.factorial(r) * math.factorial(n - r))
+
 
 def toPolar(z):
-    # Returns (r, theta-in-degrees) for complex z.
     if isinstance(z, complex):
         return (abs(z), math.degrees(math.atan2(z.imag, z.real)))
-    else:
-        return (abs(z), 0)
+    return (abs(z), 0)
+
 
 def toRec(t):
-    # Expects a tuple (r, theta in degrees); return the complex number.
     r, theta = t
     return r * (math.cos(math.radians(theta)) + 1j * math.sin(math.radians(theta)))
+
 
 def root(x, n):
     return x ** (1 / n)
 
+
 def power(x, y):
-    return x ** y
+    return x**y
 
 
-# --- Allowed names for eval ---
+# --- Allowed names ---
 ALLOWED_NAMES = {
     "sqrt": math.sqrt,
     "sin": math.sin,
@@ -94,12 +101,11 @@ ALLOWED_NAMES = {
     "power": power,
     "pi": math.pi,
     "e": math.e,
-    "random": lambda: random.random()
+    "random": lambda: random.random(),
 }
 
 
 # --- Mapping for insertion strings ---
-# Some buttons should insert a function call (with an open parenthesis).
 INSERTION_MAP = {
     "sin": "sin(",
     "cos": "cos(",
@@ -121,8 +127,8 @@ INSERTION_MAP = {
     "nCr": "nCr(",
     "Pol": "toPolar(",
     "Rec": "toRec(",
-    "root": "root(",   # expects two arguments: root(x, n)
-    "power": "power(", # expects two arguments: power(x, y)
+    "root": "root(",
+    "power": "power(",
 }
 
 
@@ -130,7 +136,7 @@ class Calculator(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Casio fx-50FH II GUI Calculator")
-        self.setGeometry(100, 100, 500, 600)
+        self.setGeometry(100, 100, 600, 700)
         self.last_ans = ""
         self.expression = ""
         self.initUI()
@@ -143,12 +149,13 @@ class Calculator(QMainWindow):
         main_layout = QVBoxLayout()
         self.display = QLineEdit()
         self.display.setReadOnly(True)
-        self.display.setFixedHeight(50)
+        self.display.setFixedHeight(60)
+        self.display.setFont(QFont("Arial", 16))
         main_layout.addWidget(self.display)
 
         grid_layout = QGridLayout()
 
-        # Define the button labels row by row.
+        # Define button labels row by row
         buttons = [
             ["HEX", "BIN", "DEC", "OCT", "CLEAR", "DELETE"],
             ["7", "8", "9", "/", "nPr", "nCr"],
@@ -158,18 +165,17 @@ class Calculator(QMainWindow):
             ["factorial", "^-1", "cuberoot", "cube", "square", "root"],
             ["sqrt", "power", "log", "10^x", "ln", "e^x"],
             ["e", "sin", "cos", "tan", "arcsin", "arccos"],
-            ["arctan", "csc", "sec", "cot", "i", "random"]
+            ["arctan", "csc", "sec", "cot", "i", "random"],
         ]
 
-        # The list of button texts to be displayed in red.
         red_buttons = ["EXE", "ANS", "CLEAR", "DELETE"]
 
-        # Create buttons and add to grid.
+        # Create buttons
         for row_idx, row in enumerate(buttons):
             for col_idx, btn_text in enumerate(row):
                 button = QPushButton(btn_text)
                 button.setFixedSize(80, 50)
-                # Format specific buttons with red text.
+                button.setFont(QFont("Arial", 10, QFont.Bold))
                 if btn_text in red_buttons:
                     button.setStyleSheet("color: red;")
                 button.clicked.connect(self.buttonClicked)
@@ -184,63 +190,31 @@ class Calculator(QMainWindow):
 
         if btn_text == "CLEAR":
             self.expression = ""
-            self.display.setText(self.expression)
-            return
         elif btn_text == "DELETE":
-            # Check if the end of expression matches any inserted function call
-            removed = False
-            # Sort the insertion strings by length (longest first) to catch longer matches first.
-            for key, ins_str in sorted(INSERTION_MAP.items(), key=lambda x: -len(x[1])):
-                if self.expression.endswith(ins_str):
-                    self.expression = self.expression[:-len(ins_str)]
-                    removed = True
-                    break
-            if not removed:
-                # If no function substring match, delete last character.
-                self.expression = self.expression[:-1]
-            self.display.setText(self.expression)
-            return
+            self.expression = self.expression[:-1]
         elif btn_text == "EXE":
             self.evaluateExpression()
-            return
         elif btn_text == "ANS":
-            # Insert the last answer into the expression.
             self.expression += str(self.last_ans)
-            self.display.setText(self.expression)
-            return
         elif btn_text in ("HEX", "BIN", "DEC", "OCT"):
-            # Convert last answer (if integer) to the selected numeral system.
             try:
                 value = int(float(self.last_ans))
+                if btn_text == "HEX":
+                    self.expression = hex(value)
+                elif btn_text == "BIN":
+                    self.expression = bin(value)
+                elif btn_text == "DEC":
+                    self.expression = str(value)
+                elif btn_text == "OCT":
+                    self.expression = oct(value)
+                self.last_ans = self.expression
             except Exception:
                 self.showError("No valid integer stored in ANS for conversion.")
-                return
-
-            if btn_text == "HEX":
-                converted = hex(value)
-            elif btn_text == "BIN":
-                converted = bin(value)
-            elif btn_text == "DEC":
-                converted = str(value)
-            elif btn_text == "OCT":
-                converted = oct(value)
-            self.expression = converted
-            self.display.setText(self.expression)
-            self.last_ans = converted
-            return
         elif btn_text == "i":
-            # For imaginary unit, insert Python's 'j'
             self.expression += "j"
-            self.display.setText(self.expression)
-            return
         elif btn_text == "random":
-            # Insert function call for random.
             self.expression += "random()"
-            self.display.setText(self.expression)
-            return
         elif btn_text in ("csc", "sec", "cot"):
-            # Define these in terms of sin, cos, tan.
-            # csc(x) = 1/sin(x), sec(x)=1/cos(x), cot(x)=1/tan(x)
             self.expression += btn_text + "("
             if "csc" not in ALLOWED_NAMES:
                 ALLOWED_NAMES["csc"] = lambda x: 1 / math.sin(x)
@@ -248,32 +222,25 @@ class Calculator(QMainWindow):
                 ALLOWED_NAMES["sec"] = lambda x: 1 / math.cos(x)
             if "cot" not in ALLOWED_NAMES:
                 ALLOWED_NAMES["cot"] = lambda x: 1 / math.tan(x)
-            return
-
-        # If the button text is one of our functions that require an open parenthesis:
-        if btn_text in INSERTION_MAP:
+        elif btn_text in INSERTION_MAP:
             self.expression += INSERTION_MAP[btn_text]
         else:
-            # For numbers, operators, parentheses, pi, e, etc.
-            if btn_text == "pi":
-                self.expression += "pi"
-            elif btn_text == "e":
-                self.expression += "e"
-            else:
-                self.expression += btn_text
+            self.expression += btn_text
+
         self.display.setText(self.expression)
 
     def evaluateExpression(self):
         try:
-            # Evaluate the expression using eval and our allowed names.
-            # Provide a safe context with no builtins.
+            open_parens = self.expression.count("(")
+            close_parens = self.expression.count(")")
+            self.expression += ")" * (open_parens - close_parens)
+
             result = eval(self.expression, {"__builtins__": {}}, ALLOWED_NAMES)
-            self.display.setText(str(result))
             self.last_ans = result
             self.expression = str(result)
+            self.display.setText(self.expression)
         except Exception as e:
             self.showError("Error: " + str(e))
-            # Do not clear the existing input on error.
 
     def showError(self, message):
         msg = QMessageBox()
@@ -288,4 +255,3 @@ if __name__ == "__main__":
     calc = Calculator()
     calc.show()
     sys.exit(app.exec_())
-
